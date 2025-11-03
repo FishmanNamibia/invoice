@@ -83,7 +83,7 @@ const Login = () => {
               objectFit: 'contain'
             }} 
           />
-          <h1 className="auth-title">Financial Management System</h1>
+          <h1 className="auth-title">DynaFinances - Bookkeeping System</h1>
           <p className="auth-subtitle">
             {require2FA ? 'Two-Factor Authentication' : 'Login to your account'}
           </p>

@@ -137,7 +137,7 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
-    console.log(`📊 Financial Management System API`);
+    console.log(`📊 DynaFinances - Bookkeeping System API`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 

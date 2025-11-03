@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Financial Management System - Setup Script
+# DynaFinances - Bookkeeping System - Setup Script
 # This script helps you set up the system quickly
 
-echo "🚀 Financial Management System - Setup"
+echo "🚀 DynaFinances - Bookkeeping System - Setup"
 echo "======================================"
 echo ""
 

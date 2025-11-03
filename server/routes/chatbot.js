@@ -130,7 +130,7 @@ const knowledgeBase = [
     // GREETINGS
     {
         patterns: ['hello', 'hi', 'hey', 'greetings'],
-        response: `Hello! 👋 I'm here to help you with the Financial Management System. I can help you with:\n\n• Creating invoices and quotes\n• Managing customers\n• Recording payments\n• Setting up your company info\n• Enabling security features\n• And much more!\n\nWhat would you like to know?`
+        response: `Hello! 👋 I'm here to help you with DynaFinances - Bookkeeping System. I can help you with:\n\n• Creating invoices and quotes\n• Managing customers\n• Recording payments\n• Setting up your company info\n• Enabling security features\n• And much more!\n\nWhat would you like to know?`
     },
     {
         patterns: ['thank', 'thanks', 'thx'],

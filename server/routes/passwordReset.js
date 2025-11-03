@@ -94,7 +94,7 @@ router.post('/forgot-password', [
                     </p>
                     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                     <p style="color: #999; font-size: 12px;">
-                        Financial Management System | Security Team
+                        DynaFinances - Bookkeeping System | Security Team
                     </p>
                 </div>
             `
@@ -217,7 +217,7 @@ router.post('/reset-password', [
                     <p>If you did not make this change, please contact support immediately.</p>
                     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                     <p style="color: #999; font-size: 12px;">
-                        Financial Management System | Security Team
+                        DynaFinances - Bookkeeping System | Security Team
                     </p>
                 </div>
             `

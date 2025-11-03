@@ -1,7 +1,7 @@
 {
   "name": "financials-system",
   "version": "1.0.0",
-  "description": "Multi-tenant Financial Management System with Invoicing, Quotes, and Bookkeeping",
+  "description": "DynaFinances - Multi-tenant Bookkeeping System with Invoicing, Quotes, and Financial Management",
   "main": "server/index.js",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",

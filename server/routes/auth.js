@@ -75,7 +75,7 @@ router.post('/register', [
                 html: `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                         <div style="background-color: #007bff; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-                            <h1 style="margin: 0;">🎉 Welcome to Financial Management System!</h1>
+                            <h1 style="margin: 0;">🎉 Welcome to DynaFinances - Bookkeeping System!</h1>
                         </div>
                         <div style="padding: 30px; background-color: #f9fafb;">
                             <h2 style="color: #333;">Hello ${firstName} ${lastName}!</h2>
@@ -150,7 +150,7 @@ router.post('/register', [
                             </p>
 
                             <p style="color: #555; line-height: 1.6;">
-                                Thank you for choosing our Financial Management System. We're excited to help you 
+                                Thank you for choosing DynaFinances - Bookkeeping System. We're excited to help you 
                                 streamline your business finances!
                             </p>
 
@@ -165,7 +165,7 @@ router.post('/register', [
                                 This is an automated message. Please do not reply to this email.
                             </p>
                             <p style="margin: 10px 0 0 0;">
-                                © ${new Date().getFullYear()} Financial Management System. All rights reserved.
+                                © ${new Date().getFullYear()} DynaFinances - Bookkeeping System. All rights reserved.
                             </p>
                         </div>
                     </div>

@@ -1,4 +1,4 @@
-# 💼 DynaFinances - Financial Management System
+# 💼 DynaFinances - Bookkeeping System
 
 <div align="center">
 

@@ -8,7 +8,7 @@ const ChatBot = () => {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: 'Hello! 👋 I\'m your Financial Management System assistant. How can I help you today?'
+      content: 'Hello! 👋 I\'m your DynaFinances assistant. How can I help you today?'
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
