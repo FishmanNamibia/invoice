@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Mail } from 'lucide-react';
 import { useCurrency } from '../hooks/useCurrency';
 
 const Payments = () => {
@@ -34,6 +34,15 @@ const Payments = () => {
       } catch (error) {
         toast.error('Failed to delete payment');
       }
+    }
+  };
+
+  const handleSendReceipt = async (id) => {
+    try {
+      await axios.post(`/api/payments/${id}/send-receipt`);
+      toast.success('Payment receipt sent successfully');
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to send payment receipt');
     }
   };
 
@@ -83,12 +92,22 @@ const Payments = () => {
                     </td>
                     <td>{payment.reference_number || '-'}</td>
                     <td>
-                      <button
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleDelete(payment.id)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={() => handleSendReceipt(payment.id)}
+                          title="Send Receipt"
+                        >
+                          <Mail size={14} />
+                        </button>
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDelete(payment.id)}
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

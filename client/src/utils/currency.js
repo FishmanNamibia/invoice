@@ -9,7 +9,7 @@ export const getCurrencySymbol = (currencyCode) => {
 };
 
 // Format currency based on company currency setting
-export const formatCurrency = (amount, currency = 'USD', locale = 'en-US') => {
+export const formatCurrency = (amount, currency = 'NAD', locale = 'en-US') => {
   if (amount === null || amount === undefined) {
     amount = 0;
   }
@@ -18,12 +18,12 @@ export const formatCurrency = (amount, currency = 'USD', locale = 'en-US') => {
   try {
     return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: currency || 'USD',
+      currency: currency || 'NAD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(parseFloat(amount));
   } catch (error) {
-    // Fallback to USD if currency is invalid
+    // Fallback to NAD if currency is invalid
     const symbol = getCurrencySymbol(currency);
     return `${symbol}${parseFloat(amount || 0).toLocaleString(locale, {
       minimumFractionDigits: 2,
@@ -46,7 +46,7 @@ export const formatCurrencyWithSymbol = (amount, currencySymbol = '$', locale = 
 
 // Get company currency hook helper
 export const useCompanyCurrency = (company) => {
-  const currency = company?.currency || 'USD';
+  const currency = company?.currency || 'NAD';
   const currencySymbol = getCurrencySymbol(currency);
   
   return {

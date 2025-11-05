@@ -111,6 +111,17 @@ app.use('/api/general-ledger', require('./routes/generalLedger'));
 app.use('/api/chatbot', require('./routes/chatbot'));
 app.use('/api', require('./routes/countries'));
 
+// Advanced Features Routes
+app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/vendors', require('./routes/vendors'));
+app.use('/api/projects', require('./routes/projects'));
+app.use('/api/subscriptions', require('./routes/subscriptions'));
+app.use('/api/purchase-orders', require('./routes/purchaseOrders'));
+app.use('/api/inventory', require('./routes/inventory'));
+app.use('/api/budgets', require('./routes/budgets'));
+app.use('/api/recurring-invoices', require('./routes/recurringInvoices'));
+app.use('/api/notifications', require('./routes/notifications').router);
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Financial System API is running' });

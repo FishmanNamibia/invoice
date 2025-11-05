@@ -157,53 +157,52 @@ router.post('/', [
 
         await client.query('COMMIT');
 
-        // Send payment receipt email if requested
-        if (req.body.sendReceiptEmail) {
-            try {
-                // Get payment with invoice details
-                const paymentWithInvoice = await db.query(
-                    `SELECT p.*, i.invoice_number, i.invoice_date, i.total_amount,
-                            c.customer_name, c.email as customer_email,
-                            co.name as company_name, co.email as company_email
-                     FROM payments p
-                     JOIN customers c ON p.customer_id = c.id
-                     JOIN companies co ON p.company_id = co.id
-                     LEFT JOIN payment_allocations pa ON pa.payment_id = p.id
-                     LEFT JOIN invoices i ON pa.invoice_id = i.id
-                     WHERE p.id = $1
-                     LIMIT 1`,
-                    [payment.id]
-                );
+        // Automatically send payment receipt email to customer
+        try {
+            // Get payment with invoice details
+            const paymentWithInvoice = await db.query(
+                `SELECT p.*, i.invoice_number, i.invoice_date, i.total_amount,
+                        c.customer_name, c.email as customer_email,
+                        co.name as company_name, co.email as company_email
+                 FROM payments p
+                 JOIN customers c ON p.customer_id = c.id
+                 JOIN companies co ON p.company_id = co.id
+                 LEFT JOIN payment_allocations pa ON pa.payment_id = p.id
+                 LEFT JOIN invoices i ON pa.invoice_id = i.id
+                 WHERE p.id = $1
+                 LIMIT 1`,
+                [payment.id]
+            );
 
-                if (paymentWithInvoice.rows.length > 0) {
-                    const paymentData = paymentWithInvoice.rows[0];
-                    const invoiceData = {
-                        invoice_number: paymentData.invoice_number,
-                        invoice_date: paymentData.invoice_date,
-                        total_amount: paymentData.total_amount
-                    };
-                    const companyData = {
-                        name: paymentData.company_name,
-                        email: paymentData.company_email
-                    };
-                    const customerData = {
-                        customer_name: paymentData.customer_name,
-                        email: paymentData.customer_email
-                    };
+            if (paymentWithInvoice.rows.length > 0 && paymentWithInvoice.rows[0].customer_email) {
+                const paymentData = paymentWithInvoice.rows[0];
+                const invoiceData = {
+                    invoice_number: paymentData.invoice_number || payment.payment_number,
+                    invoice_date: paymentData.invoice_date || payment.payment_date,
+                    total_amount: paymentData.total_amount || payment.amount
+                };
+                const companyData = {
+                    name: paymentData.company_name,
+                    email: paymentData.company_email
+                };
+                const customerData = {
+                    customer_name: paymentData.customer_name,
+                    name: paymentData.customer_name,
+                    email: paymentData.customer_email
+                };
 
-                    // Send receipt email (async - don't wait)
-                    emailService.sendPaymentReceipt({
-                        to: customerData.email,
-                        payment,
-                        invoice: invoiceData,
-                        company: companyData,
-                        customer: customerData
-                    }).catch(err => console.error('Error sending payment receipt:', err));
-                }
-            } catch (emailError) {
-                console.error('Error preparing payment receipt email:', emailError);
-                // Don't fail the payment creation if email fails
+                // Send receipt email (async - don't wait)
+                emailService.sendPaymentReceipt({
+                    to: customerData.email,
+                    payment: paymentData,
+                    invoice: invoiceData,
+                    company: companyData,
+                    customer: customerData
+                }).catch(err => console.error('Error sending payment receipt:', err));
             }
+        } catch (emailError) {
+            console.error('Error preparing payment receipt email:', emailError);
+            // Don't fail the payment creation if email fails
         }
 
         res.status(201).json(payment);
@@ -268,6 +267,80 @@ router.delete('/:id', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     } finally {
         client.release();
+    }
+});
+
+// Send payment receipt email for existing payment
+router.post('/:id/send-receipt', async (req, res) => {
+    try {
+        const { companyId } = req.user;
+        const { id } = req.params;
+
+        // Get payment with invoice and customer details
+        const paymentResult = await db.query(
+            `SELECT p.*, i.invoice_number, i.invoice_date, i.total_amount,
+                    c.customer_name, c.email as customer_email,
+                    co.name as company_name, co.email as company_email
+             FROM payments p
+             JOIN customers c ON p.customer_id = c.id
+             JOIN companies co ON p.company_id = co.id
+             LEFT JOIN payment_allocations pa ON pa.payment_id = p.id
+             LEFT JOIN invoices i ON pa.invoice_id = i.id
+             WHERE p.id = $1 AND p.company_id = $2
+             LIMIT 1`,
+            [id, companyId]
+        );
+
+        if (paymentResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Payment not found' });
+        }
+
+        const paymentData = paymentResult.rows[0];
+
+        if (!paymentData.customer_email) {
+            return res.status(400).json({ error: 'Customer email not found' });
+        }
+
+        const invoiceData = {
+            invoice_number: paymentData.invoice_number || paymentData.payment_number,
+            invoice_date: paymentData.invoice_date || paymentData.payment_date,
+            total_amount: paymentData.total_amount || paymentData.amount
+        };
+
+        const companyData = {
+            name: paymentData.company_name,
+            email: paymentData.company_email
+        };
+
+        const customerData = {
+            customer_name: paymentData.customer_name,
+            name: paymentData.customer_name,
+            email: paymentData.customer_email
+        };
+
+        // Send receipt email
+        const emailResult = await emailService.sendPaymentReceipt({
+            to: customerData.email,
+            payment: paymentData,
+            invoice: invoiceData,
+            company: companyData,
+            customer: customerData
+        });
+
+        if (emailResult.success) {
+            res.json({ 
+                message: 'Payment receipt sent successfully',
+                email: customerData.email
+            });
+        } else {
+            res.status(500).json({ 
+                error: 'Failed to send payment receipt',
+                details: emailResult.error
+            });
+        }
+    } catch (error) {
+        console.error('Error sending payment receipt:', error);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 

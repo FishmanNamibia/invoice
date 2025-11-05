@@ -31,6 +31,10 @@ import CompanySettings from './pages/CompanySettings';
 import AccountSecurity from './pages/AccountSecurity';
 import ChartOfAccounts from './pages/ChartOfAccounts';
 import GeneralLedger from './pages/GeneralLedger';
+import Expenses from './pages/Expenses';
+import Vendors from './pages/Vendors';
+import Projects from './pages/Projects';
+import SubscriptionManagement from './pages/SubscriptionManagement';
 
 function App() {
   return (
@@ -77,10 +81,14 @@ function App() {
               <Route path="reports" element={<Reports />} />
               <Route path="chart-of-accounts" element={<ChartOfAccounts />} />
               <Route path="general-ledger" element={<GeneralLedger />} />
+              <Route path="expenses" element={<Expenses />} />
+              <Route path="vendors" element={<Vendors />} />
+              <Route path="projects" element={<Projects />} />
               <Route path="settings" element={<CompanySettings />} />
               <Route path="account-security" element={<AccountSecurity />} />
               <Route path="system-admin" element={<SystemAdminDashboard />} />
               <Route path="system-monitoring" element={<SystemMonitoring />} />
+              <Route path="subscription-management" element={<SubscriptionManagement />} />
             </Route>
           </Routes>
           

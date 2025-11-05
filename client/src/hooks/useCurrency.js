@@ -7,7 +7,7 @@ import { formatCurrency, formatCurrencyWithSymbol, getCurrencySymbol } from '../
  */
 export const useCurrency = () => {
   const { company } = useAuth();
-  const currency = company?.currency || 'USD';
+  const currency = company?.currency || 'NAD';
   const currencySymbol = getCurrencySymbol(currency);
 
   return {

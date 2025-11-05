@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   LayoutDashboard, Users, FileText, FileCheck, CreditCard, 
   Package, BarChart3, LogOut, Menu, X, Settings, Building2,
-  BookOpen, FileSpreadsheet, Activity, Shield
+  BookOpen, FileSpreadsheet, Activity, Shield, DollarSign,
+  Clock, Mail, TrendingUp
 } from 'lucide-react';
 import './Layout.css';
 
@@ -28,6 +29,9 @@ const Layout = () => {
     { path: '/quotes', icon: FileCheck, label: 'Quotes' },
     { path: '/payments', icon: CreditCard, label: 'Payments' },
     { path: '/items', icon: Package, label: 'Items' },
+    { path: '/expenses', icon: DollarSign, label: 'Expenses' },
+    { path: '/vendors', icon: Building2, label: 'Vendors' },
+    { path: '/projects', icon: Clock, label: 'Projects & Time' },
     { path: '/chart-of-accounts', icon: BookOpen, label: 'Chart of Accounts' },
     { path: '/general-ledger', icon: FileSpreadsheet, label: 'General Ledger' },
     { path: '/reports', icon: BarChart3, label: 'Reports' },
@@ -38,6 +42,7 @@ const Layout = () => {
   const adminMenuItems = [
     { path: '/system-admin', icon: Settings, label: 'System Admin' },
     { path: '/system-monitoring', icon: Activity, label: 'System Monitoring' },
+    { path: '/subscription-management', icon: Mail, label: 'Subscriptions & Reminders' },
   ];
 
   const menuItems = isSuperAdmin ? adminMenuItems : regularMenuItems;
