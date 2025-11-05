@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { Mail, DollarSign, Calendar, AlertTriangle, CheckCircle, Send, Users, TrendingUp, Plus, Edit2, Trash2, Building2, Eye } from 'lucide-react';
+import { Mail, DollarSign, Calendar, AlertTriangle, Send, Plus, Edit2, Trash2, Eye } from 'lucide-react';
 import { useCurrency } from '../hooks/useCurrency';
 
 const SubscriptionManagement = () => {
@@ -13,10 +13,12 @@ const SubscriptionManagement = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [showCompanyModal, setShowCompanyModal] = useState(false);
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('companies'); // 'companies' or 'plans'
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedSubscription, setSelectedSubscription] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState(null);
 
   useEffect(() => {
     fetchCompanies();
@@ -226,6 +228,43 @@ const SubscriptionManagement = () => {
     }
   };
 
+  const handleCreatePlan = async (planData) => {
+    try {
+      await axios.post('/api/subscriptions/plans', planData);
+      toast.success('Subscription plan created successfully');
+      fetchPlans();
+      setShowPlanModal(false);
+      setSelectedPlan(null);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to create subscription plan');
+    }
+  };
+
+  const handleUpdatePlan = async (planId, planData) => {
+    try {
+      await axios.put(`/api/subscriptions/plans/${planId}`, planData);
+      toast.success('Subscription plan updated successfully');
+      fetchPlans();
+      setShowPlanModal(false);
+      setSelectedPlan(null);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to update subscription plan');
+    }
+  };
+
+  const handleDeletePlan = async (planId) => {
+    if (window.confirm('Are you sure you want to delete this subscription plan? This will affect all companies using this plan.')) {
+      try {
+        // Instead of deleting, deactivate the plan
+        await axios.put(`/api/subscriptions/plans/${planId}`, { is_active: false });
+        toast.success('Subscription plan deactivated successfully');
+        fetchPlans();
+      } catch (error) {
+        toast.error(error.response?.data?.error || 'Failed to deactivate subscription plan');
+      }
+    }
+  };
+
   const getStatusBadge = (status) => {
     const badges = {
       trial: { class: 'badge badge-info', label: 'Trial' },
@@ -301,33 +340,73 @@ const SubscriptionManagement = () => {
       <div className="page-header">
         <h1 className="page-title">Subscription Management</h1>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={() => {
-              setSelectedCompany(null);
-              setShowCompanyModal(true);
-            }}
-            className="btn btn-primary"
-          >
-            <Plus size={18} /> Assign Subscription
-          </button>
-          <button
-            onClick={() => handleSendBulkReminders('upcoming')}
-            className="btn btn-info"
-          >
-            <Send size={18} /> Send Upcoming Reminders
-          </button>
-          <button
-            onClick={() => handleSendBulkReminders('overdue')}
-            className="btn btn-warning"
-          >
-            <Send size={18} /> Send Overdue Reminders
-          </button>
+          {activeTab === 'companies' && (
+            <>
+              <button
+                onClick={() => {
+                  setSelectedCompany(null);
+                  setShowCompanyModal(true);
+                }}
+                className="btn btn-primary"
+              >
+                <Plus size={18} /> Assign Subscription
+              </button>
+              <button
+                onClick={() => handleSendBulkReminders('upcoming')}
+                className="btn btn-info"
+              >
+                <Send size={18} /> Send Upcoming Reminders
+              </button>
+              <button
+                onClick={() => handleSendBulkReminders('overdue')}
+                className="btn btn-warning"
+              >
+                <Send size={18} /> Send Overdue Reminders
+              </button>
+            </>
+          )}
+          {activeTab === 'plans' && (
+            <button
+              onClick={() => {
+                setSelectedPlan(null);
+                setShowPlanModal(true);
+              }}
+              className="btn btn-primary"
+            >
+              <Plus size={18} /> Create Plan
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Dashboard Cards */}
-      {dashboard && (
-        <div className="grid grid-4 mb-4">
+      {/* Tabs */}
+      <div className="card mb-4">
+        <div className="card-body" style={{ padding: '8px 16px' }}>
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid var(--border-color)' }}>
+            <button
+              onClick={() => setActiveTab('companies')}
+              className={`btn ${activeTab === 'companies' ? 'btn-primary' : 'btn-outline'}`}
+              style={{ borderRadius: '6px 6px 0 0', borderBottom: 'none', marginBottom: '-2px' }}
+            >
+              Companies & Subscriptions
+            </button>
+            <button
+              onClick={() => setActiveTab('plans')}
+              className={`btn ${activeTab === 'plans' ? 'btn-primary' : 'btn-outline'}`}
+              style={{ borderRadius: '6px 6px 0 0', borderBottom: 'none', marginBottom: '-2px' }}
+            >
+              Subscription Plans
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Companies & Subscriptions Tab */}
+      {activeTab === 'companies' && (
+        <>
+          {/* Dashboard Cards */}
+          {dashboard && (
+            <div className="grid grid-4 mb-4">
           <div className="card">
             <div className="card-body">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -598,35 +677,120 @@ const SubscriptionManagement = () => {
         </div>
       </div>
 
-      {/* Recent Reminders */}
-      <div className="card">
-        <div className="card-header">
-          <h3 className="card-title">Recent Payment Reminders</h3>
-        </div>
-        <div className="card-body">
-          {reminders.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
-              No reminders sent yet
+          {/* Recent Reminders */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">Recent Payment Reminders</h3>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {reminders.slice(0, 10).map((reminder) => (
-                <div key={reminder.id} style={{ padding: '12px', backgroundColor: 'var(--light-color)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: 600, marginBottom: '4px' }}>{reminder.company_name}</div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                      {reminder.reminder_type} reminder sent on {new Date(reminder.sent_at).toLocaleString()}
-                    </div>
-                  </div>
-                  <span className={reminder.status === 'sent' ? 'badge badge-success' : 'badge badge-danger'}>
-                    {reminder.status}
-                  </span>
+            <div className="card-body">
+              {reminders.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
+                  No reminders sent yet
                 </div>
-              ))}
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {reminders.slice(0, 10).map((reminder) => (
+                    <div key={reminder.id} style={{ padding: '12px', backgroundColor: 'var(--light-color)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, marginBottom: '4px' }}>{reminder.company_name}</div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                          {reminder.reminder_type} reminder sent on {new Date(reminder.sent_at).toLocaleString()}
+                        </div>
+                      </div>
+                      <span className={reminder.status === 'sent' ? 'badge badge-success' : 'badge badge-danger'}>
+                        {reminder.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
+        </>
+      )}
+
+      {/* Subscription Plans Management Tab */}
+      {activeTab === 'plans' && (
+        <div className="card mb-4">
+          <div className="card-header">
+            <h3 className="card-title">Subscription Plans</h3>
+          </div>
+          <div className="card-body">
+            {subscriptionPlans.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                No subscription plans found. Click "Create Plan" to add one.
+              </div>
+            ) : (
+              <div className="table-responsive">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Plan Name</th>
+                      <th>Description</th>
+                      <th>Price</th>
+                      <th>Billing Period</th>
+                      <th>Max Users</th>
+                      <th>Max Invoices</th>
+                      <th>Max Customers</th>
+                      <th>Trial Days</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {subscriptionPlans.map((plan) => (
+                      <tr key={plan.id}>
+                        <td style={{ fontWeight: 600 }}>{plan.name}</td>
+                        <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{plan.description || '-'}</td>
+                        <td style={{ fontWeight: 600 }}>{formatCurrency(plan.price)}</td>
+                        <td>
+                          <span className="badge badge-info">
+                            {plan.billing_period === 'yearly' ? 'Yearly' : plan.billing_period === 'monthly' ? 'Monthly' : plan.billing_period}
+                          </span>
+                        </td>
+                        <td>{plan.max_users || 'Unlimited'}</td>
+                        <td>{plan.max_invoices || 'Unlimited'}</td>
+                        <td>{plan.max_customers || 'Unlimited'}</td>
+                        <td>{plan.trial_days || 0} days</td>
+                        <td>
+                          {plan.is_active ? (
+                            <span className="badge badge-success">Active</span>
+                          ) : (
+                            <span className="badge badge-secondary">Inactive</span>
+                          )}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => {
+                                setSelectedPlan(plan);
+                                setShowPlanModal(true);
+                              }}
+                              className="btn btn-sm btn-outline"
+                              title="Edit Plan"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            {plan.is_active && (
+                              <button
+                                onClick={() => handleDeletePlan(plan.id)}
+                                className="btn btn-sm btn-danger"
+                                title="Deactivate Plan"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Company/Subscription Modal */}
       {showCompanyModal && (
@@ -661,6 +825,19 @@ const SubscriptionManagement = () => {
           }}
         />
       )}
+
+      {/* Plan Management Modal */}
+      {showPlanModal && (
+        <PlanModal
+          plan={selectedPlan}
+          onClose={() => {
+            setShowPlanModal(false);
+            setSelectedPlan(null);
+          }}
+          onCreate={handleCreatePlan}
+          onUpdate={handleUpdatePlan}
+        />
+      )}
     </div>
   );
 };
@@ -691,7 +868,7 @@ const CompanySubscriptionModal = ({ company, companies, subscriptionPlans, subsc
   });
 
   const [selectedCompany, setSelectedCompany] = useState(company);
-  const [isEditing, setIsEditing] = useState(!!subscription);
+  const isEditing = !!subscription;
 
   useEffect(() => {
     if (company) {
@@ -1006,6 +1183,209 @@ const ReminderModal = ({ company, subscription, onClose, onSend }) => {
             <Send size={16} /> Send Reminder
           </button>
         </div>
+      </div>
+    </div>
+  );
+};
+
+// Plan Management Modal Component
+const PlanModal = ({ plan, onClose, onCreate, onUpdate }) => {
+  const isEditing = !!plan;
+  
+  const [formData, setFormData] = useState({
+    name: plan?.name || '',
+    description: plan?.description || '',
+    price: plan?.price || 0,
+    billing_period: plan?.billing_period || 'yearly',
+    max_users: plan?.max_users || null,
+    max_invoices: plan?.max_invoices || null,
+    max_customers: plan?.max_customers || null,
+    trial_days: plan?.trial_days || 0,
+    is_active: plan?.is_active !== undefined ? plan.is_active : true,
+    features: plan?.features ? JSON.stringify(plan.features, null, 2) : '[]'
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const planData = {
+        ...formData,
+        price: parseFloat(formData.price),
+        max_users: formData.max_users ? parseInt(formData.max_users) : null,
+        max_invoices: formData.max_invoices ? parseInt(formData.max_invoices) : null,
+        max_customers: formData.max_customers ? parseInt(formData.max_customers) : null,
+        trial_days: parseInt(formData.trial_days) || 0,
+        features: JSON.parse(formData.features || '[]')
+      };
+
+      if (isEditing) {
+        await onUpdate(plan.id, planData);
+      } else {
+        await onCreate(planData);
+      }
+    } catch (error) {
+      console.error('Error parsing features JSON:', error);
+      toast.error('Invalid JSON in features field. Please use valid JSON format.');
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%' }}>
+        <div className="modal-header">
+          <h2 className="modal-title">{isEditing ? 'Edit' : 'Create'} Subscription Plan</h2>
+          <button onClick={onClose} className="btn-close">×</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
+            <div className="form-group">
+              <label className="form-label">Plan Name *</label>
+              <input
+                type="text"
+                className="form-control"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+                placeholder="e.g., Starter, Professional, Unlimited"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Description</label>
+              <textarea
+                className="form-control"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows="3"
+                placeholder="Describe the plan features and benefits"
+              />
+            </div>
+
+            <div className="grid grid-2" style={{ gap: '16px' }}>
+              <div className="form-group">
+                <label className="form-label">Price (N$) *</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  required
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Billing Period *</label>
+                <select
+                  className="form-control"
+                  value={formData.billing_period}
+                  onChange={(e) => setFormData({ ...formData, billing_period: e.target.value })}
+                  required
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                  <option value="quarterly">Quarterly</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-3" style={{ gap: '16px' }}>
+              <div className="form-group">
+                <label className="form-label">Max Users</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={formData.max_users || ''}
+                  onChange={(e) => setFormData({ ...formData, max_users: e.target.value || null })}
+                  min="1"
+                  placeholder="Unlimited"
+                />
+                <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Leave empty for unlimited</small>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Max Invoices</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={formData.max_invoices || ''}
+                  onChange={(e) => setFormData({ ...formData, max_invoices: e.target.value || null })}
+                  min="1"
+                  placeholder="Unlimited"
+                />
+                <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Leave empty for unlimited</small>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Max Customers</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={formData.max_customers || ''}
+                  onChange={(e) => setFormData({ ...formData, max_customers: e.target.value || null })}
+                  min="1"
+                  placeholder="Unlimited"
+                />
+                <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Leave empty for unlimited</small>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Trial Days</label>
+              <input
+                type="number"
+                className="form-control"
+                value={formData.trial_days}
+                onChange={(e) => setFormData({ ...formData, trial_days: e.target.value })}
+                min="0"
+                placeholder="0"
+              />
+              <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Number of days for free trial</small>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Features (JSON Array)</label>
+              <textarea
+                className="form-control"
+                value={formData.features}
+                onChange={(e) => setFormData({ ...formData, features: e.target.value })}
+                rows="4"
+                placeholder='["invoicing", "quotes", "basic_reports"]'
+                style={{ fontFamily: 'monospace', fontSize: '13px' }}
+              />
+              <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
+                Enter features as a JSON array, e.g., ["invoicing", "quotes", "reports"]
+              </small>
+            </div>
+
+            {isEditing && (
+              <div className="form-group">
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                    style={{ marginRight: '8px' }}
+                  />
+                  <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Active</span>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="modal-footer">
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', width: '100%' }}>
+              <button type="button" onClick={onClose} className="btn btn-outline">
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">
+                {isEditing ? 'Update' : 'Create'} Plan
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   );

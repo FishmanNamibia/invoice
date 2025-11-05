@@ -29,7 +29,11 @@ router.get('/plans', isSystemAdmin, async (req, res) => {
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching subscription plans:', error);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ 
+            error: 'Server error',
+            message: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 
@@ -408,13 +412,17 @@ router.get('/payment-reminders', isSystemAdmin, async (req, res) => {
         const result = await db.query(query, params);
 
         res.json({
-            reminders: result.rows,
+            reminders: result.rows || [],
             page: parseInt(page),
             limit: parseInt(limit)
         });
     } catch (error) {
         console.error('Error fetching payment reminders:', error);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ 
+            error: 'Server error',
+            message: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 
@@ -646,10 +654,19 @@ router.get('/dashboard/overdue', isSystemAdmin, async (req, res) => {
                AND auto_renew = true`
         );
 
-        res.json(result.rows[0]);
+        res.json(result.rows[0] || {
+            upcoming_count: 0,
+            overdue_count: 0,
+            critical_count: 0,
+            overdue_amount: 0
+        });
     } catch (error) {
         console.error('Error fetching overdue dashboard:', error);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ 
+            error: 'Server error',
+            message: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 

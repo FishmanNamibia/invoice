@@ -17,7 +17,7 @@ app.set('trust proxy', 1);
 
 // Security Headers (Helmet)
 app.use(helmet({
-    contentSecurityPolicy: isProduction ? undefined : false,
+    contentSecurityPolicy: false, // Disabled to allow React inline scripts
     crossOriginEmbedderPolicy: false
 }));
 
