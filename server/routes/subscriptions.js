@@ -442,62 +442,94 @@ router.post('/payment-reminders/send/:companyId', [
         const { reminder_type, message } = req.body;
         const { userId } = req.user;
 
-        // Get company and subscription details
-        const subResult = await db.query(
-            `SELECT cs.*, c.name as company_name, c.email as company_email,
-                    sp.name as plan_name, sp.price as plan_price, sp.billing_period
-             FROM company_subscriptions cs
-             JOIN companies c ON cs.company_id = c.id
-             JOIN subscription_plans sp ON cs.plan_id = sp.id
-             WHERE cs.company_id = $1
-             ORDER BY cs.created_at DESC
-             LIMIT 1`,
+        // Get company details first
+        const companyResult = await db.query(
+            `SELECT id, name, email FROM companies WHERE id = $1`,
             [companyId]
         );
 
-        if (subResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Company subscription not found' });
+        if (companyResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Company not found' });
         }
 
-        const subscription = subResult.rows[0];
+        const company = companyResult.rows[0];
+
+        // Try to get subscription details if available
+        let subscription = null;
+        try {
+            const subResult = await db.query(
+                `SELECT cs.*, sp.name as plan_name, sp.price as plan_price, sp.billing_period
+                 FROM company_subscriptions cs
+                 JOIN subscription_plans sp ON cs.plan_id = sp.id
+                 WHERE cs.company_id = $1
+                 ORDER BY cs.created_at DESC
+                 LIMIT 1`,
+                [companyId]
+            );
+            if (subResult.rows.length > 0) {
+                subscription = subResult.rows[0];
+            }
+        } catch (error) {
+            // Table might not exist yet, continue without subscription details
+            console.log('Could not fetch subscription details:', error.message);
+        }
+
+        // Merge company and subscription data
+        const companyData = {
+            ...company,
+            company_name: company.name,
+            company_email: company.email,
+            ...(subscription ? {
+                plan_name: subscription.plan_name,
+                plan_price: subscription.plan_price,
+                billing_period: subscription.billing_period,
+                next_billing_date: subscription.next_billing_date
+            } : {})
+        };
 
         // Prepare email based on reminder type
         let emailSubject, emailMessage;
         
         if (reminder_type === 'upcoming') {
-            emailSubject = `Upcoming Payment Reminder - ${subscription.company_name}`;
+            emailSubject = `Upcoming Payment Reminder - ${companyData.company_name}`;
             emailMessage = message || `
                 <h2>Payment Reminder</h2>
-                <p>Dear ${subscription.company_name} Team,</p>
+                <p>Dear ${companyData.company_name} Team,</p>
                 <p>This is a friendly reminder that your subscription payment is coming due.</p>
-                <p><strong>Plan:</strong> ${subscription.plan_name}</p>
-                <p><strong>Amount:</strong> $${subscription.plan_price}</p>
-                <p><strong>Next Billing Date:</strong> ${new Date(subscription.next_billing_date).toLocaleDateString()}</p>
+                ${subscription ? `
+                    <p><strong>Plan:</strong> ${companyData.plan_name}</p>
+                    <p><strong>Amount:</strong> N$${companyData.plan_price}</p>
+                    <p><strong>Next Billing Date:</strong> ${companyData.next_billing_date ? new Date(companyData.next_billing_date).toLocaleDateString() : 'N/A'}</p>
+                ` : '<p>Please contact us to set up your subscription plan.</p>'}
                 <p>Please ensure your payment method is up to date to avoid any interruption in service.</p>
                 <p>Best regards,<br>DynaFinances Team</p>
             `;
         } else if (reminder_type === 'overdue') {
-            emailSubject = `OVERDUE Payment Notice - ${subscription.company_name}`;
+            emailSubject = `OVERDUE Payment Notice - ${companyData.company_name}`;
             emailMessage = message || `
                 <h2 style="color: #ef4444;">Payment Overdue</h2>
-                <p>Dear ${subscription.company_name} Team,</p>
+                <p>Dear ${companyData.company_name} Team,</p>
                 <p>We notice that your subscription payment is now overdue.</p>
-                <p><strong>Plan:</strong> ${subscription.plan_name}</p>
-                <p><strong>Amount Due:</strong> $${subscription.plan_price}</p>
-                <p><strong>Due Date:</strong> ${new Date(subscription.next_billing_date).toLocaleDateString()}</p>
+                ${subscription ? `
+                    <p><strong>Plan:</strong> ${companyData.plan_name}</p>
+                    <p><strong>Amount Due:</strong> N$${companyData.plan_price}</p>
+                    <p><strong>Due Date:</strong> ${companyData.next_billing_date ? new Date(companyData.next_billing_date).toLocaleDateString() : 'N/A'}</p>
+                ` : '<p>Please contact us to set up your subscription plan.</p>'}
                 <p style="color: #ef4444;"><strong>Please make payment immediately to avoid service suspension.</strong></p>
                 <p>If you have already made payment, please disregard this notice.</p>
                 <p>Best regards,<br>DynaFinances Team</p>
             `;
         } else { // final
-            emailSubject = `FINAL NOTICE - Payment Required - ${subscription.company_name}`;
+            emailSubject = `FINAL NOTICE - Payment Required - ${companyData.company_name}`;
             emailMessage = message || `
                 <h2 style="color: #dc2626;">FINAL PAYMENT NOTICE</h2>
-                <p>Dear ${subscription.company_name} Team,</p>
+                <p>Dear ${companyData.company_name} Team,</p>
                 <p><strong style="color: #dc2626;">This is your final notice. Your account will be suspended if payment is not received within 48 hours.</strong></p>
-                <p><strong>Plan:</strong> ${subscription.plan_name}</p>
-                <p><strong>Amount Due:</strong> $${subscription.plan_price}</p>
-                <p><strong>Original Due Date:</strong> ${new Date(subscription.next_billing_date).toLocaleDateString()}</p>
+                ${subscription ? `
+                    <p><strong>Plan:</strong> ${companyData.plan_name}</p>
+                    <p><strong>Amount Due:</strong> N$${companyData.plan_price}</p>
+                    <p><strong>Original Due Date:</strong> ${companyData.next_billing_date ? new Date(companyData.next_billing_date).toLocaleDateString() : 'N/A'}</p>
+                ` : '<p>Please contact us to set up your subscription plan.</p>'}
                 <p>Please contact us immediately if you have any questions or concerns.</p>
                 <p>Best regards,<br>DynaFinances Team</p>
             `;
@@ -505,33 +537,48 @@ router.post('/payment-reminders/send/:companyId', [
 
         // Send email
         const emailResult = await sendEmail({
-            to: subscription.company_email,
+            to: companyData.company_email,
             subject: emailSubject,
             html: emailMessage
         });
 
-        // Record payment reminder
-        const reminderResult = await db.query(
-            `INSERT INTO payment_reminders (
-                company_id, subscription_id, reminder_type, sent_by,
-                email_to, message, status
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING *`,
-            [
-                companyId, subscription.id, reminder_type, userId,
-                subscription.company_email, emailMessage,
-                emailResult.success ? 'sent' : 'failed'
-            ]
-        );
+        // Record payment reminder (handle if table doesn't exist yet)
+        let reminderResult = null;
+        try {
+            reminderResult = await db.query(
+                `INSERT INTO payment_reminders (
+                    company_id, subscription_id, reminder_type, sent_by,
+                    email_to, message, status
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING *`,
+                [
+                    companyId, 
+                    subscription?.id || null, 
+                    reminder_type, 
+                    userId,
+                    companyData.company_email, 
+                    emailMessage,
+                    emailResult.success ? 'sent' : 'failed'
+                ]
+            );
+        } catch (error) {
+            console.log('Could not record payment reminder in database:', error.message);
+            // Continue even if we can't record it
+        }
 
         res.json({
             message: 'Payment reminder sent successfully',
-            reminder: reminderResult.rows[0],
-            email_sent: emailResult.success
+            reminder: reminderResult?.rows[0] || null,
+            email_sent: emailResult.success,
+            email_error: emailResult.error || null
         });
     } catch (error) {
         console.error('Error sending payment reminder:', error);
-        res.status(500).json({ error: 'Server error sending payment reminder' });
+        res.status(500).json({ 
+            error: 'Server error sending payment reminder',
+            message: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 
