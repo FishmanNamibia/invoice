@@ -487,51 +487,161 @@ router.post('/payment-reminders/send/:companyId', [
             } : {})
         };
 
+        // Helper function to generate email header with logo
+        const generateEmailHeader = (company) => {
+            const logoUrl = company?.logo_url || null;
+            const companyName = company?.name || 'DynaFinances and Bookkeeping';
+            
+            if (logoUrl) {
+                return `
+                    <div style="text-align: center; padding: 20px; background-color: #4f46e5; border-radius: 8px 8px 0 0;">
+                        <img src="${logoUrl}" alt="${companyName}" style="max-width: 200px; max-height: 80px; margin-bottom: 10px;" />
+                        <h1 style="color: white; margin: 0; font-size: 24px;">${companyName}</h1>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div style="text-align: center; padding: 20px; background-color: #4f46e5; color: white; border-radius: 8px 8px 0 0;">
+                        <h1 style="color: white; margin: 0; font-size: 24px;">${companyName}</h1>
+                        <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">DynaFinances and Bookkeeping</p>
+                    </div>
+                `;
+            }
+        };
+
+        // Get company logo if available
+        let companyWithLogo = null;
+        try {
+            const companyResult = await db.query(
+                'SELECT logo_url FROM companies WHERE id = $1',
+                [companyId]
+            );
+            if (companyResult.rows.length > 0) {
+                companyWithLogo = { ...companyData, logo_url: companyResult.rows[0].logo_url };
+            }
+        } catch (error) {
+            console.log('Could not fetch company logo:', error.message);
+        }
+
         // Prepare email based on reminder type
         let emailSubject, emailMessage;
+        
+        const emailHeader = generateEmailHeader(companyWithLogo || companyData);
         
         if (reminder_type === 'upcoming') {
             emailSubject = `Upcoming Payment Reminder - ${companyData.company_name}`;
             emailMessage = message || `
-                <h2>Payment Reminder</h2>
-                <p>Dear ${companyData.company_name} Team,</p>
-                <p>This is a friendly reminder that your subscription payment is coming due.</p>
-                ${subscription ? `
-                    <p><strong>Plan:</strong> ${companyData.plan_name}</p>
-                    <p><strong>Amount:</strong> N$${companyData.plan_price}</p>
-                    <p><strong>Next Billing Date:</strong> ${companyData.next_billing_date ? new Date(companyData.next_billing_date).toLocaleDateString() : 'N/A'}</p>
-                ` : '<p>Please contact us to set up your subscription plan.</p>'}
-                <p>Please ensure your payment method is up to date to avoid any interruption in service.</p>
-                <p>Best regards,<br>DynaFinances Team</p>
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .content { padding: 20px; background-color: #f9fafb; }
+                        .details { background-color: white; padding: 15px; margin: 20px 0; border-radius: 8px; }
+                        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        ${emailHeader}
+                        <div class="content">
+                            <h2>Payment Reminder</h2>
+                            <p>Dear ${companyData.company_name} Team,</p>
+                            <p>This is a friendly reminder that your subscription payment is coming due.</p>
+                            <div class="details">
+                                ${subscription ? `
+                                    <p><strong>Plan:</strong> ${companyData.plan_name}</p>
+                                    <p><strong>Amount:</strong> N$${companyData.plan_price}</p>
+                                    <p><strong>Next Billing Date:</strong> ${companyData.next_billing_date ? new Date(companyData.next_billing_date).toLocaleDateString() : 'N/A'}</p>
+                                ` : '<p>Please contact us to set up your subscription plan.</p>'}
+                            </div>
+                            <p>Please ensure your payment method is up to date to avoid any interruption in service.</p>
+                            <p>Best regards,<br>DynaFinances and Bookkeeping Team</p>
+                        </div>
+                        <div class="footer">
+                            <p>This is an automated message from DynaFinances and Bookkeeping.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
             `;
         } else if (reminder_type === 'overdue') {
             emailSubject = `OVERDUE Payment Notice - ${companyData.company_name}`;
             emailMessage = message || `
-                <h2 style="color: #ef4444;">Payment Overdue</h2>
-                <p>Dear ${companyData.company_name} Team,</p>
-                <p>We notice that your subscription payment is now overdue.</p>
-                ${subscription ? `
-                    <p><strong>Plan:</strong> ${companyData.plan_name}</p>
-                    <p><strong>Amount Due:</strong> N$${companyData.plan_price}</p>
-                    <p><strong>Due Date:</strong> ${companyData.next_billing_date ? new Date(companyData.next_billing_date).toLocaleDateString() : 'N/A'}</p>
-                ` : '<p>Please contact us to set up your subscription plan.</p>'}
-                <p style="color: #ef4444;"><strong>Please make payment immediately to avoid service suspension.</strong></p>
-                <p>If you have already made payment, please disregard this notice.</p>
-                <p>Best regards,<br>DynaFinances Team</p>
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .content { padding: 20px; background-color: #f9fafb; }
+                        .details { background-color: white; padding: 15px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #ef4444; }
+                        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        ${emailHeader}
+                        <div class="content">
+                            <h2 style="color: #ef4444;">Payment Overdue</h2>
+                            <p>Dear ${companyData.company_name} Team,</p>
+                            <p>We notice that your subscription payment is now overdue.</p>
+                            <div class="details">
+                                ${subscription ? `
+                                    <p><strong>Plan:</strong> ${companyData.plan_name}</p>
+                                    <p><strong>Amount Due:</strong> N$${companyData.plan_price}</p>
+                                    <p><strong>Due Date:</strong> ${companyData.next_billing_date ? new Date(companyData.next_billing_date).toLocaleDateString() : 'N/A'}</p>
+                                ` : '<p>Please contact us to set up your subscription plan.</p>'}
+                            </div>
+                            <p style="color: #ef4444;"><strong>Please make payment immediately to avoid service suspension.</strong></p>
+                            <p>If you have already made payment, please disregard this notice.</p>
+                            <p>Best regards,<br>DynaFinances and Bookkeeping Team</p>
+                        </div>
+                        <div class="footer">
+                            <p>This is an automated message from DynaFinances and Bookkeeping.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
             `;
         } else { // final
             emailSubject = `FINAL NOTICE - Payment Required - ${companyData.company_name}`;
             emailMessage = message || `
-                <h2 style="color: #dc2626;">FINAL PAYMENT NOTICE</h2>
-                <p>Dear ${companyData.company_name} Team,</p>
-                <p><strong style="color: #dc2626;">This is your final notice. Your account will be suspended if payment is not received within 48 hours.</strong></p>
-                ${subscription ? `
-                    <p><strong>Plan:</strong> ${companyData.plan_name}</p>
-                    <p><strong>Amount Due:</strong> N$${companyData.plan_price}</p>
-                    <p><strong>Original Due Date:</strong> ${companyData.next_billing_date ? new Date(companyData.next_billing_date).toLocaleDateString() : 'N/A'}</p>
-                ` : '<p>Please contact us to set up your subscription plan.</p>'}
-                <p>Please contact us immediately if you have any questions or concerns.</p>
-                <p>Best regards,<br>DynaFinances Team</p>
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .content { padding: 20px; background-color: #f9fafb; }
+                        .details { background-color: white; padding: 15px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #dc2626; }
+                        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        ${emailHeader}
+                        <div class="content">
+                            <h2 style="color: #dc2626;">FINAL PAYMENT NOTICE</h2>
+                            <p>Dear ${companyData.company_name} Team,</p>
+                            <p><strong style="color: #dc2626;">This is your final notice. Your account will be suspended if payment is not received within 48 hours.</strong></p>
+                            <div class="details">
+                                ${subscription ? `
+                                    <p><strong>Plan:</strong> ${companyData.plan_name}</p>
+                                    <p><strong>Amount Due:</strong> N$${companyData.plan_price}</p>
+                                    <p><strong>Original Due Date:</strong> ${companyData.next_billing_date ? new Date(companyData.next_billing_date).toLocaleDateString() : 'N/A'}</p>
+                                ` : '<p>Please contact us to set up your subscription plan.</p>'}
+                            </div>
+                            <p>Please contact us immediately if you have any questions or concerns.</p>
+                            <p>Best regards,<br>DynaFinances and Bookkeeping Team</p>
+                        </div>
+                        <div class="footer">
+                            <p>This is an automated message from DynaFinances and Bookkeeping.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
             `;
         }
 
@@ -539,7 +649,8 @@ router.post('/payment-reminders/send/:companyId', [
         const emailResult = await sendEmail({
             to: companyData.company_email,
             subject: emailSubject,
-            html: emailMessage
+            html: emailMessage,
+            companyName: 'DynaFinances and Bookkeeping'
         });
 
         // Record payment reminder (handle if table doesn't exist yet)

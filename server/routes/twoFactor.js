@@ -86,6 +86,31 @@ router.post('/enable', authMiddleware, async (req, res) => {
             );
         }
 
+        // Get company logo for email
+        let companyLogo = null;
+        try {
+            const companyResult = await db.query(
+                `SELECT logo_url FROM companies WHERE id = (SELECT company_id FROM users WHERE id = $1 LIMIT 1)`,
+                [userId]
+            );
+            if (companyResult.rows.length > 0) {
+                companyLogo = companyResult.rows[0].logo_url;
+            }
+        } catch (error) {
+            console.log('Could not fetch company logo:', error.message);
+        }
+        
+        const emailHeader = companyLogo ? `
+            <div style="text-align: center; padding: 20px; background-color: #4f46e5; border-radius: 8px 8px 0 0;">
+                <img src="${companyLogo}" alt="DynaFinances" style="max-width: 200px; max-height: 80px; margin-bottom: 10px;" />
+                <h1 style="color: white; margin: 0; font-size: 24px;">DynaFinances and Bookkeeping</h1>
+            </div>
+        ` : `
+            <div style="text-align: center; padding: 20px; background-color: #4f46e5; color: white; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">DynaFinances and Bookkeeping</h1>
+            </div>
+        `;
+        
         // Send OTP to email for verification
         const otp = generate6DigitOTP();
         
@@ -100,19 +125,40 @@ router.post('/enable', authMiddleware, async (req, res) => {
         await sendEmail({
             to: email,
             subject: '2FA Setup - Verification Code',
+            companyName: 'DynaFinances and Bookkeeping',
             html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #333;">Two-Factor Authentication Setup</h2>
-                    <p>Your verification code is:</p>
-                    <div style="text-align: center; margin: 30px 0;">
-                        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; 
-                                    font-size: 32px; font-weight: bold; letter-spacing: 5px;">
-                            ${otp}
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .content { padding: 20px; background-color: #f9fafb; }
+                        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        ${emailHeader}
+                        <div class="content">
+                            <h2 style="color: #333;">Two-Factor Authentication Setup</h2>
+                            <p>Your verification code is:</p>
+                            <div style="text-align: center; margin: 30px 0;">
+                                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; 
+                                            font-size: 32px; font-weight: bold; letter-spacing: 5px; border: 2px solid #4f46e5;">
+                                    ${otp}
+                                </div>
+                            </div>
+                            <p style="color: #666;">This code will expire in 10 minutes.</p>
+                            <p>If you didn't request this, please ignore this email.</p>
+                            <p style="margin-top: 30px;">Best regards,<br><strong>DynaFinances and Bookkeeping Team</strong></p>
+                        </div>
+                        <div class="footer">
+                            <p>DynaFinances and Bookkeeping | Security Team</p>
                         </div>
                     </div>
-                    <p style="color: #666;">This code will expire in 10 minutes.</p>
-                    <p>If you didn't request this, please ignore this email.</p>
-                </div>
+                </body>
+                </html>
             `
         });
 
@@ -287,6 +333,33 @@ router.post('/send-code', [
         }
 
         // Generate and send OTP
+        // Get company logo for email
+        let companyLogo = null;
+        try {
+            if (!isSystemUser) {
+                const companyResult = await db.query(
+                    `SELECT logo_url FROM companies WHERE id = (SELECT company_id FROM users WHERE email = $1 LIMIT 1)`,
+                    [userEmail]
+                );
+                if (companyResult.rows.length > 0) {
+                    companyLogo = companyResult.rows[0].logo_url;
+                }
+            }
+        } catch (error) {
+            console.log('Could not fetch company logo:', error.message);
+        }
+        
+        const emailHeader = companyLogo ? `
+            <div style="text-align: center; padding: 20px; background-color: #4f46e5; border-radius: 8px 8px 0 0;">
+                <img src="${companyLogo}" alt="DynaFinances" style="max-width: 200px; max-height: 80px; margin-bottom: 10px;" />
+                <h1 style="color: white; margin: 0; font-size: 24px;">DynaFinances and Bookkeeping</h1>
+            </div>
+        ` : `
+            <div style="text-align: center; padding: 20px; background-color: #4f46e5; color: white; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">DynaFinances and Bookkeeping</h1>
+            </div>
+        `;
+        
         const otp = generate6DigitOTP();
         const timestamp = Date.now();
         
@@ -301,18 +374,39 @@ router.post('/send-code', [
         await sendEmail({
             to: userEmail,
             subject: 'Your Login Verification Code',
+            companyName: 'DynaFinances and Bookkeeping',
             html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #333;">Login Verification Code</h2>
-                    <p>Your verification code is:</p>
-                    <div style="text-align: center; margin: 30px 0;">
-                        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; 
-                                    font-size: 32px; font-weight: bold; letter-spacing: 5px;">
-                            ${otp}
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .content { padding: 20px; background-color: #f9fafb; }
+                        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        ${emailHeader}
+                        <div class="content">
+                            <h2 style="color: #333;">Login Verification Code</h2>
+                            <p>Your verification code is:</p>
+                            <div style="text-align: center; margin: 30px 0;">
+                                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; 
+                                            font-size: 32px; font-weight: bold; letter-spacing: 5px; border: 2px solid #4f46e5;">
+                                    ${otp}
+                                </div>
+                            </div>
+                            <p style="color: #666;">This code will expire in 10 minutes.</p>
+                            <p style="margin-top: 30px;">Best regards,<br><strong>DynaFinances and Bookkeeping Team</strong></p>
+                        </div>
+                        <div class="footer">
+                            <p>DynaFinances and Bookkeeping | Security Team</p>
                         </div>
                     </div>
-                    <p style="color: #666;">This code will expire in 10 minutes.</p>
-                </div>
+                </body>
+                </html>
             `
         });
 

@@ -69,12 +69,27 @@ router.post('/register', [
 
         // Send welcome email
         try {
+            const logoUrl = company.logo_url || null;
+            const emailHeader = logoUrl ? `
+                <div style="text-align: center; padding: 20px; background-color: #4f46e5; border-radius: 8px 8px 0 0;">
+                    <img src="${logoUrl}" alt="${company.name}" style="max-width: 200px; max-height: 80px; margin-bottom: 10px;" />
+                    <h1 style="color: white; margin: 0; font-size: 24px;">${company.name}</h1>
+                </div>
+            ` : `
+                <div style="text-align: center; padding: 20px; background-color: #4f46e5; color: white; border-radius: 8px 8px 0 0;">
+                    <h1 style="color: white; margin: 0; font-size: 24px;">${company.name}</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">DynaFinances and Bookkeeping</p>
+                </div>
+            `;
+            
             await sendEmail({
                 to: email,
                 subject: `Welcome to ${company.name} - Account Created Successfully`,
+                companyName: 'DynaFinances and Bookkeeping',
                 html: `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <div style="background-color: #007bff; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                        ${emailHeader}
+                        <div style="background-color: #007bff; color: white; padding: 30px; text-align: center;">
                             <h1 style="margin: 0;">🎉 Welcome to DynaFinances - Bookkeeping System!</h1>
                         </div>
                         <div style="padding: 30px; background-color: #f9fafb;">
@@ -328,14 +343,41 @@ router.post('/login', [
                 [`${otp}:${expiry.getTime()}`, new Date(), user.id]
             );
 
+            // Get company logo for email
+            let companyLogo = null;
+            try {
+                const companyResult = await db.query(
+                    'SELECT logo_url FROM companies WHERE id = $1',
+                    [user.company_id]
+                );
+                if (companyResult.rows.length > 0) {
+                    companyLogo = companyResult.rows[0].logo_url;
+                }
+            } catch (error) {
+                console.log('Could not fetch company logo:', error.message);
+            }
+            
+            const emailHeader = companyLogo ? `
+                <div style="text-align: center; padding: 20px; background-color: #4f46e5; border-radius: 8px 8px 0 0;">
+                    <img src="${companyLogo}" alt="DynaFinances" style="max-width: 200px; max-height: 80px; margin-bottom: 10px;" />
+                    <h1 style="color: white; margin: 0; font-size: 24px;">DynaFinances and Bookkeeping</h1>
+                </div>
+            ` : `
+                <div style="text-align: center; padding: 20px; background-color: #4f46e5; color: white; border-radius: 8px 8px 0 0;">
+                    <h1 style="color: white; margin: 0; font-size: 24px;">DynaFinances and Bookkeeping</h1>
+                </div>
+            `;
+            
             // Send OTP email
             try {
                 await sendEmail({
                     to: email,
                     subject: 'Your Login Verification Code',
+                    companyName: 'DynaFinances and Bookkeeping',
                     html: `
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                            <div style="background-color: #667eea; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                            ${emailHeader}
+                            <div style="background-color: #667eea; color: white; padding: 30px; text-align: center;">
                                 <h1 style="margin: 0;">🔐 Login Verification</h1>
                             </div>
                             <div style="padding: 30px; background-color: #f9fafb;">
@@ -360,7 +402,7 @@ router.post('/login', [
 
                                 <p style="color: #555; font-size: 14px; margin-top: 30px;">
                                     Best regards,<br>
-                                    <strong>Financial Management Team</strong>
+                                    <strong>DynaFinances and Bookkeeping Team</strong>
                                 </p>
                             </div>
                             <div style="background-color: #333; color: #999; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; font-size: 12px;">

@@ -68,35 +68,77 @@ router.post('/forgot-password', [
             [userId, systemUserId, userEmail, resetToken, expiresAt]
         );
 
+        // Get company logo for email
+        let companyLogo = null;
+        try {
+            const companyResult = await db.query(
+                'SELECT logo_url FROM companies WHERE id = (SELECT company_id FROM users WHERE email = $1 LIMIT 1)',
+                [userEmail]
+            );
+            if (companyResult.rows.length > 0) {
+                companyLogo = companyResult.rows[0].logo_url;
+            }
+        } catch (error) {
+            console.log('Could not fetch company logo:', error.message);
+        }
+        
+        const emailHeader = companyLogo ? `
+            <div style="text-align: center; padding: 20px; background-color: #4f46e5; border-radius: 8px 8px 0 0;">
+                <img src="${companyLogo}" alt="DynaFinances" style="max-width: 200px; max-height: 80px; margin-bottom: 10px;" />
+                <h1 style="color: white; margin: 0; font-size: 24px;">DynaFinances and Bookkeeping</h1>
+            </div>
+        ` : `
+            <div style="text-align: center; padding: 20px; background-color: #4f46e5; color: white; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">DynaFinances and Bookkeeping</h1>
+            </div>
+        `;
+        
         // Send reset email
         const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
         
         await sendEmail({
             to: userEmail,
             subject: 'Password Reset Request',
+            companyName: 'DynaFinances and Bookkeeping',
             html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #333;">Password Reset Request</h2>
-                    <p>Hello ${userName},</p>
-                    <p>We received a request to reset your password. Click the button below to create a new password:</p>
-                    <div style="text-align: center; margin: 30px 0;">
-                        <a href="${resetLink}" 
-                           style="background-color: #007bff; color: white; padding: 12px 30px; 
-                                  text-decoration: none; border-radius: 5px; display: inline-block;">
-                            Reset Password
-                        </a>
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .content { padding: 20px; background-color: #f9fafb; }
+                        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        ${emailHeader}
+                        <div class="content">
+                            <h2 style="color: #333;">Password Reset Request</h2>
+                            <p>Hello ${userName},</p>
+                            <p>We received a request to reset your password. Click the button below to create a new password:</p>
+                            <div style="text-align: center; margin: 30px 0;">
+                                <a href="${resetLink}" 
+                                   style="background-color: #007bff; color: white; padding: 12px 30px; 
+                                          text-decoration: none; border-radius: 5px; display: inline-block;">
+                                    Reset Password
+                                </a>
+                            </div>
+                            <p>Or copy and paste this link into your browser:</p>
+                            <p style="word-break: break-all; color: #007bff;">${resetLink}</p>
+                            <p style="color: #666; font-size: 14px;">
+                                This link will expire in 1 hour. If you didn't request a password reset, 
+                                please ignore this email or contact support if you have concerns.
+                            </p>
+                            <p style="margin-top: 30px;">Best regards,<br><strong>DynaFinances and Bookkeeping Team</strong></p>
+                        </div>
+                        <div class="footer">
+                            <p>DynaFinances and Bookkeeping | Security Team</p>
+                        </div>
                     </div>
-                    <p>Or copy and paste this link into your browser:</p>
-                    <p style="word-break: break-all; color: #007bff;">${resetLink}</p>
-                    <p style="color: #666; font-size: 14px;">
-                        This link will expire in 1 hour. If you didn't request a password reset, 
-                        please ignore this email or contact support if you have concerns.
-                    </p>
-                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    <p style="color: #999; font-size: 12px;">
-                        DynaFinances - Bookkeeping System | Security Team
-                    </p>
-                </div>
+                </body>
+                </html>
             `
         });
 
@@ -206,20 +248,64 @@ router.post('/reset-password', [
             [resetToken.id]
         );
 
+        // Get company logo for email
+        let companyLogo = null;
+        try {
+            const companyResult = await db.query(
+                `SELECT logo_url FROM companies WHERE id = (
+                    SELECT company_id FROM users WHERE id = $1 OR email = $2 LIMIT 1
+                )`,
+                [resetToken.user_id, resetToken.email]
+            );
+            if (companyResult.rows.length > 0) {
+                companyLogo = companyResult.rows[0].logo_url;
+            }
+        } catch (error) {
+            console.log('Could not fetch company logo:', error.message);
+        }
+        
+        const emailHeader = companyLogo ? `
+            <div style="text-align: center; padding: 20px; background-color: #4f46e5; border-radius: 8px 8px 0 0;">
+                <img src="${companyLogo}" alt="DynaFinances" style="max-width: 200px; max-height: 80px; margin-bottom: 10px;" />
+                <h1 style="color: white; margin: 0; font-size: 24px;">DynaFinances and Bookkeeping</h1>
+            </div>
+        ` : `
+            <div style="text-align: center; padding: 20px; background-color: #4f46e5; color: white; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">DynaFinances and Bookkeeping</h1>
+            </div>
+        `;
+        
         // Send confirmation email
         await sendEmail({
             to: resetToken.email,
             subject: 'Password Successfully Reset',
+            companyName: 'DynaFinances and Bookkeeping',
             html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #28a745;">Password Successfully Reset</h2>
-                    <p>Your password has been successfully changed.</p>
-                    <p>If you did not make this change, please contact support immediately.</p>
-                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    <p style="color: #999; font-size: 12px;">
-                        DynaFinances - Bookkeeping System | Security Team
-                    </p>
-                </div>
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .content { padding: 20px; background-color: #f9fafb; }
+                        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        ${emailHeader}
+                        <div class="content">
+                            <h2 style="color: #28a745;">Password Successfully Reset</h2>
+                            <p>Your password has been successfully changed.</p>
+                            <p>If you did not make this change, please contact support immediately.</p>
+                            <p style="margin-top: 30px;">Best regards,<br><strong>DynaFinances and Bookkeeping Team</strong></p>
+                        </div>
+                        <div class="footer">
+                            <p>DynaFinances and Bookkeeping | Security Team</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
             `
         });
 

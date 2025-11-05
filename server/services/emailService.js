@@ -1,16 +1,42 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
+// Default system name
+const SYSTEM_NAME = 'DynaFinances and Bookkeeping';
+const DEFAULT_SENDER = `"${SYSTEM_NAME}" <${process.env.SMTP_USER || 'info@dynaverseinvestment.com'}>`;
+
 // Create transporter
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'invoice.dynaverseinvestment.com',
+    host: process.env.SMTP_HOST || 'mail.dynaverseinvestment.com',
     port: parseInt(process.env.SMTP_PORT || '465'),
     secure: true, // true for 465, false for other ports
     auth: {
-        user: process.env.SMTP_USER || 'info@invoice.dynaverseinvestment.com',
+        user: process.env.SMTP_USER || 'info@dynaverseinvestment.com',
         pass: process.env.SMTP_PASSWORD || ''
     }
 });
+
+// Helper function to generate email header with logo
+const generateEmailHeader = (company) => {
+    const logoUrl = company?.logo_url || company?.logoUrl || null;
+    const companyName = company?.name || SYSTEM_NAME;
+    
+    if (logoUrl) {
+        return `
+            <div style="text-align: center; padding: 20px; background-color: #4f46e5; border-radius: 8px 8px 0 0;">
+                <img src="${logoUrl}" alt="${companyName}" style="max-width: 200px; max-height: 80px; margin-bottom: 10px;" />
+                <h1 style="color: white; margin: 0; font-size: 24px;">${companyName}</h1>
+            </div>
+        `;
+    } else {
+        return `
+            <div style="text-align: center; padding: 20px; background-color: #4f46e5; color: white; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">${companyName}</h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">${SYSTEM_NAME}</p>
+            </div>
+        `;
+    }
+};
 
 // Verify connection
 transporter.verify((error, success) => {
@@ -46,8 +72,9 @@ const templates = {
                 </head>
                 <body>
                     <div class="container">
-                        <div class="header">
-                            <h1>Invoice ${invoice.invoice_number}</h1>
+                        ${generateEmailHeader(company)}
+                        <div class="header" style="background-color: #4f46e5; color: white; padding: 20px; text-align: center;">
+                            <h1 style="margin: 0;">Invoice ${invoice.invoice_number}</h1>
                         </div>
                         <div class="content">
                             <p>Dear ${customer.customer_name || customer.name},</p>
@@ -161,8 +188,9 @@ const templates = {
                 </head>
                 <body>
                     <div class="container">
-                        <div class="header">
-                            <h1>Quote ${quote.quote_number}</h1>
+                        ${generateEmailHeader(company)}
+                        <div class="header" style="background-color: #059669; color: white; padding: 20px; text-align: center;">
+                            <h1 style="margin: 0;">Quote ${quote.quote_number}</h1>
                         </div>
                         <div class="content">
                             <p>Dear ${customer.customer_name || customer.name},</p>
@@ -271,8 +299,9 @@ const templates = {
                 </head>
                 <body>
                     <div class="container">
-                        <div class="header">
-                            <h1>Payment Receipt</h1>
+                        ${generateEmailHeader(company)}
+                        <div class="header" style="background-color: #10b981; color: white; padding: 20px; text-align: center;">
+                            <h1 style="margin: 0;">Payment Receipt</h1>
                         </div>
                         <div class="content">
                             <p>Dear ${customer.customer_name || customer.name},</p>
@@ -341,8 +370,9 @@ const templates = {
                 </head>
                 <body>
                     <div class="container">
-                        <div class="header">
-                            <h1>Payment Reminder</h1>
+                        ${generateEmailHeader(company)}
+                        <div class="header" style="background-color: #f59e0b; color: white; padding: 20px; text-align: center;">
+                            <h1 style="margin: 0;">Payment Reminder</h1>
                         </div>
                         <div class="content">
                             <p>Dear ${customer.customer_name || customer.name},</p>
@@ -402,9 +432,9 @@ const emailService = {
             const template = templates.invoice({ invoice, company, customer, items, invoiceUrl });
             
             const mailOptions = {
-                from: `"${company.name}" <${process.env.SMTP_USER || 'info@invoice.dynaverseinvestment.com'}>`,
+                from: company?.name ? `"${company.name}" <${process.env.SMTP_USER || 'info@dynaverseinvestment.com'}>` : DEFAULT_SENDER,
                 to: to || customer.email || customer.customer_email,
-                replyTo: company.email,
+                replyTo: company?.email || process.env.SMTP_USER || 'info@dynaverseinvestment.com',
                 subject: template.subject,
                 text: template.text,
                 html: template.html
@@ -426,9 +456,9 @@ const emailService = {
             const template = templates.quote({ quote, company, customer, items, quoteUrl });
             
             const mailOptions = {
-                from: `"${company.name}" <${process.env.SMTP_USER || 'info@invoice.dynaverseinvestment.com'}>`,
+                from: company?.name ? `"${company.name}" <${process.env.SMTP_USER || 'info@dynaverseinvestment.com'}>` : DEFAULT_SENDER,
                 to: to || customer.email || customer.customer_email,
-                replyTo: company.email,
+                replyTo: company?.email || process.env.SMTP_USER || 'info@dynaverseinvestment.com',
                 subject: template.subject,
                 text: template.text,
                 html: template.html
@@ -450,9 +480,9 @@ const emailService = {
             const template = templates.paymentReceipt({ payment, invoice, company, customer });
             
             const mailOptions = {
-                from: `"${company.name}" <${process.env.SMTP_USER || 'info@invoice.dynaverseinvestment.com'}>`,
+                from: company?.name ? `"${company.name}" <${process.env.SMTP_USER || 'info@dynaverseinvestment.com'}>` : DEFAULT_SENDER,
                 to: to || customer.email || customer.customer_email,
-                replyTo: company.email,
+                replyTo: company?.email || process.env.SMTP_USER || 'info@dynaverseinvestment.com',
                 subject: template.subject,
                 text: template.text,
                 html: template.html
@@ -474,9 +504,9 @@ const emailService = {
             const template = templates.paymentReminder({ invoice, company, customer, daysOverdue });
             
             const mailOptions = {
-                from: `"${company.name}" <${process.env.SMTP_USER || 'info@invoice.dynaverseinvestment.com'}>`,
+                from: company?.name ? `"${company.name}" <${process.env.SMTP_USER || 'info@dynaverseinvestment.com'}>` : DEFAULT_SENDER,
                 to: to || customer.email || customer.customer_email,
-                replyTo: company.email,
+                replyTo: company?.email || process.env.SMTP_USER || 'info@dynaverseinvestment.com',
                 subject: template.subject,
                 text: template.text,
                 html: template.html
@@ -495,7 +525,7 @@ const emailService = {
     async sendEmail(options) {
         try {
             const mailOptions = {
-                from: options.from || `"${options.companyName || 'Financial System'}" <${process.env.SMTP_USER || 'info@invoice.dynaverseinvestment.com'}>`,
+                from: options.from || `"${options.companyName || SYSTEM_NAME}" <${process.env.SMTP_USER || 'info@dynaverseinvestment.com'}>`,
                 to: options.to,
                 replyTo: options.replyTo,
                 subject: options.subject,
