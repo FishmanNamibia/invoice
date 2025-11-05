@@ -163,7 +163,7 @@ const SubscriptionManagement = () => {
       fetchCompanies();
       fetchDashboard();
       fetchReminders();
-      setShowSubscriptionModal(false);
+      setShowCompanyModal(false);
       setSelectedSubscription(null);
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to update subscription');
@@ -615,8 +615,8 @@ const SubscriptionManagement = () => {
                               <>
                                 <button
                                   onClick={() => {
-                                    setSelectedSubscription(subscription);
-                                    setShowSubscriptionModal(true);
+                                    setSelectedCompany(company);
+                                    setShowCompanyModal(true);
                                   }}
                                   className="btn btn-sm btn-outline"
                                   title="Edit Subscription"
